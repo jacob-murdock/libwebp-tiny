@@ -25,6 +25,8 @@ jobs:
             os: macos-14
           - target: android
             os: ubuntu-latest
+          - target: android-x86_64
+            os: ubuntu-latest
 
     steps:
       - name: Checkout libwebp-tiny
@@ -40,14 +42,14 @@ jobs:
           sudo apt-get install -y mingw-w64 cmake
 
       - name: Setup Android NDK
-        if: matrix.target == 'android'
+        if: startsWith(matrix.target, 'android')
         uses: nttld/setup-ndk@v1
         id: setup-ndk
         with:
           ndk-version: r26d
 
       - name: Install cmake (Linux hosts)
-        if: matrix.target == 'linux' || matrix.target == 'windows' || matrix.target == 'android'
+        if: matrix.target == 'linux' || matrix.target == 'windows' || startsWith(matrix.target, 'android')
         run: sudo apt-get update && sudo apt-get install -y cmake ninja-build
 
       - name: Compile libwebpdecoder

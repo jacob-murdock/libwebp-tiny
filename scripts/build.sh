@@ -83,16 +83,19 @@ case "$PLATFORM" in
       -DCMAKE_OSX_DEPLOYMENT_TARGET=13.0
     )
     ;;
-  android)
+  android|android-x86_64)
     if [[ -z "${ANDROID_NDK_HOME:-${ANDROID_NDK_ROOT:-}}" ]]; then
       echo "ANDROID_NDK_HOME (or ANDROID_NDK_ROOT) required for android builds" >&2
       exit 1
     fi
     NDK="${ANDROID_NDK_HOME:-$ANDROID_NDK_ROOT}"
+    ANDROID_ABI=arm64-v8a
+    [[ "$PLATFORM" == android-x86_64 ]] && ANDROID_ABI=x86_64
     CMAKE_ARGS+=(
       -DCMAKE_TOOLCHAIN_FILE="$NDK/build/cmake/android.toolchain.cmake"
-      -DANDROID_ABI=arm64-v8a
+      -DANDROID_ABI="$ANDROID_ABI"
       -DANDROID_PLATFORM=android-24
+      -DCMAKE_POSITION_INDEPENDENT_CODE=ON
     )
     ;;
   *)

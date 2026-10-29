@@ -1,63 +1,43 @@
 # libwebp-tiny
 
-Minimal, self-compiled [libwebp](https://chromium.googlesource.com/webm/libwebp) builds tailored to my needs.
+Build recipes for a decode-only [libwebp](https://chromium.googlesource.com/webm/libwebp) static library.
 
-Produces static **`libwebpdecoder.a`** (no encoder, demux, mux, or CLI tools) for
-scaled WebP thumbnails via the advanced decode API (`use_scaling`).
+This repo holds a build script and a GitHub Actions matrix. It does not contain libwebp itself; the build clones upstream libwebp **v1.5.0** into `src/` and builds only the `webpdecoder` target. The decoder is about 200–300 KB of code, and the advanced decode API (`use_scaling`) can decode straight to a smaller output size.
 
-## Why
+## What's in a build
 
-FFmpeg’s built-in WebP decoder full-decodes then swscales. libwebp can decode
-directly to thumbnail size (~200–300 KB of text vs multi‑MiB FFmpeg).
+Produced: `libwebpdecoder.a` plus the public headers `webp/decode.h` and `webp/types.h`.
 
-## Layout
+Left out: the encoder, mux/demux, animation utilities, extras and all CLI tools (`cwebp`, `dwebp`, `gif2webp`, `img2webp`, `vwebp`, `webpinfo`, `webpmux`). SIMD and threading are on.
 
-```
-src/              libwebp source (shallow clone; not committed)
-scripts/          Build helpers
-out/<platform>/   Install prefix (lib/libwebpdecoder.a, include/webp/)
-.github/workflows GH Actions matrix (linux / windows / macos / macos-x86_64 / ios / ios-simulator / android)
-```
+Upstream has no switch to drop the encoder from `libwebp`, so the script builds only the `webpdecoder` target. The full CMake flag list is in `scripts/build.sh`.
 
-`macos` is Apple Silicon (arm64). `macos-x86_64` is Intel, cross-compiled on `macos-14` via `CMAKE_OSX_ARCHITECTURES=x86_64`. Vendor into ApoC / C as `external/libwebp/lib/macos/` and `external/libwebp/lib/macos-x86_64/`.
+## Building
 
-## Quick start (Linux host)
+Requirements: CMake, make and a C toolchain.
 
 ```bash
-# First time
-git clone --depth 1 --branch v1.5.0 https://github.com/webmproject/libwebp.git src
-
-make build                    # → out/linux/
-# On a Mac (or in GH Actions): TARGET_PLATFORM=macos-x86_64 make build
+make fetch    # clones libwebp v1.5.0 into src/
+make build    # native host -> out/linux/ (or out/macos/)
 ```
 
-## CMake flags
+Cross builds are selected with `TARGET_PLATFORM`:
 
-Upstream has no `WEBP_BUILD_ENCODER=OFF`. Encoder objects live in `libwebp`; we
-**ship only the `webpdecoder` target**. Tools/mux/anim are disabled so CI does
-not waste time on them:
-
-```
--DBUILD_SHARED_LIBS=OFF
--DWEBP_LINK_STATIC=ON
--DWEBP_BUILD_CWEBP=OFF
--DWEBP_BUILD_DWEBP=OFF
--DWEBP_BUILD_GIF2WEBP=OFF
--DWEBP_BUILD_IMG2WEBP=OFF
--DWEBP_BUILD_VWEBP=OFF
--DWEBP_BUILD_WEBPINFO=OFF
--DWEBP_BUILD_ANIM_UTILS=OFF
--DWEBP_BUILD_LIBWEBPMUX=OFF
--DWEBP_BUILD_WEBPMUX=OFF
--DWEBP_BUILD_EXTRAS=OFF
--DWEBP_ENABLE_SIMD=ON
--DWEBP_USE_THREAD=ON
+```bash
+make build TARGET_PLATFORM=windows     # MinGW from Linux
+TARGET_PLATFORM=android make build     # needs ANDROID_NDK_HOME or ANDROID_NDK_ROOT
 ```
 
-## Pin
+Supported values: `linux`, `windows`, `macos` (arm64), `macos-x86_64` (Intel, cross-compiled on Apple Silicon), `ios`, `ios-simulator` (arm64), `android` (arm64-v8a), `android-x86_64`.
 
-Default source pin: libwebp **v1.5.0**.
+Output goes to `out/<platform>/lib/libwebpdecoder.a` and `out/<platform>/include/webp/`. `make clean` removes `out/` and the build trees. Override the upstream tag with `WEBP_TAG=...`.
 
-## License
+## CI
 
-libwebp is **BSD-3-Clause**. See upstream `COPYING`.
+`.github/workflows/build-libwebp.yaml` runs on manual dispatch and builds for `linux`, `windows`, `macos`, `macos-x86_64`, `ios`, `ios-simulator`, `android` and `android-x86_64`. Each artifact (`libwebp-tiny-<target>`) contains `lib/` and `include/`.
+
+## Licensing
+
+libwebp is BSD-3-Clause. If you redistribute the built library, include upstream's `COPYING` notice (and `PATENTS` grant) with your app.
+
+The build scripts, configs and CI workflows in this repo are MIT licensed (see `LICENSE`). That license doesn't cover the libwebp source fetched into `src/` or the libraries built from it, which stay under libwebp's BSD-3-Clause license.
